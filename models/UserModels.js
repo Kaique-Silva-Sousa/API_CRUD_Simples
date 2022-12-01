@@ -13,6 +13,9 @@ const User = mongoose.model('User',new Schema({
     password:{
         type: String,
         required: true
+    },
+    image : {
+        type: String,
     }
 }))
 

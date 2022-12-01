@@ -1,7 +1,7 @@
 const moongose = require('mongoose')
 
 async function main(){
-    await moongose.connect('mongodb://localhost:27017/ApiTest')
+    await moongose.connect(process.env.MONGO_CONNECTION)
     console.log('connect')
 }
 main().catch((err)=>{

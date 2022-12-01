@@ -2,6 +2,10 @@ const User = require('../models/UserModels')
 const validator = require('validator')
 const ObjectId = require('mongoose').Types.ObjectId
 const bcrypt = require('bcrypt')
+const createToken = require('../helpers/createToken')
+const multer = require('multer')
+const imageUpload = require('../middleware/ImagesUpload')
+
 
 module.exports = class UserController{
     static async showUsers(req,res){
@@ -13,13 +17,17 @@ module.exports = class UserController{
         }
     }
     static async create(req,res){
+        if(req.imageNotFormatValid){
+            return res.status(401).json({message:'Imagem com  formato invalido'})
+        }
         const {name, email, password, confirmpassword } = req.body
-
-
+        const image = req.file
+        console.log(image)
         if(!email){
             res.json({message:'Email nao enviado'})
             return
         }
+
         if(!name){
             res.json({message:'name nao enviado'})
             return
@@ -48,20 +56,27 @@ module.exports = class UserController{
             res.json({message:'Já existe um usuario com este email'})
             return
         }
-        
         const user =  new User({
             name,
             email,
-            password : passwordHash
+            password : passwordHash,
+            image : image.filename
+
         })
         try{
             const newUser = user.save()
-            res.status(200).json({message:'Usuario criado'})
+            createToken(user,req,res)
+            
         }catch(e){
             console.log(e)
         }
     }
     static async edit(req,res){
+        if(req.imageNotFormatValid){
+            return res.status(401).json({message:'Imagem com  formato invalido'})
+        }
+        const image = req.file.filename
+        console.log(image)
         const {name, email } = req.body
         const id = req.params.id
         if(!ObjectId.isValid(id)){
@@ -88,7 +103,7 @@ module.exports = class UserController{
             res.json({message:'Digite um email diferente'})
             return
         }
-        const userUpdate = {name, email}
+        const userUpdate = {name, email, image}
         await User.updateOne({_id:id,},userUpdate)
         res.json({message:'Usuario atualizado'})
     }
@@ -102,10 +117,12 @@ module.exports = class UserController{
             res.json({message:'Usuario nao encontrado'})
         }
         await User.findByIdAndDelete(id)
+        // await User.deleteMany()
         res.json({message:'Usuario excluido com sucesso'})
     }
     static async login(req,res){
         const { email, password} = req.body
+        const user = User.findOne({email:email})
         if(!password){
             res.json({message:'Senha nao enviada'})
         }
@@ -117,12 +134,11 @@ module.exports = class UserController{
         if(!userExists){
             res.json({message:'Usuario nao encontrado'})
         }
-        console.log(password)
         const checkPassword = await bcrypt.compare(password,userExists.password)
         if(!checkPassword){
             res.json({message:"senha invalida."})
             return 
         }
-        res.json({message:"Usuario logado"})
+        createToken(user,req,res)
     }
 }
